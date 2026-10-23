@@ -140,22 +140,29 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
                   Delete
                 </button>
               </>
-            ) : isBuyer ? (
+            ) : isBuyer && listing.status === "active" ? (
               <>
                 <Link href={`/messages?with=${listing.sellerId}&name=${encodeURIComponent(listing.sellerName)}`} className="flex-1 py-3 bg-white/10 hover:bg-white/15 text-white font-semibold rounded-xl transition-colors text-center text-sm">
                   Message Seller
                 </Link>
-                {listing.status === "sold" ? (
-                  <div className="flex-1 py-3 bg-gray-500/20 border border-gray-500/30 text-gray-400 font-semibold rounded-xl text-center text-sm">
-                    Sold
-                  </div>
-                ) : (
-                  <Link href={`/checkout/${listing.id}`}
-                    className="flex-1 py-3 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-colors text-center text-sm">
-                    Buy now
-                  </Link>
-                )}
+                <Link href={`/checkout/${listing.id}`}
+                  className="flex-1 py-3 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-colors text-center text-sm">
+                  Buy now
+                </Link>
               </>
+            ) : isBuyer && listing.status === "sold" ? (
+              <>
+                <Link href={`/messages?with=${listing.sellerId}&name=${encodeURIComponent(listing.sellerName)}`} className="flex-1 py-3 bg-white/10 hover:bg-white/15 text-white font-semibold rounded-xl transition-colors text-center text-sm">
+                  Message Seller
+                </Link>
+                <div className="flex-1 py-3 bg-gray-500/20 border border-gray-500/30 text-gray-400 font-semibold rounded-xl text-center text-sm">
+                  Sold
+                </div>
+              </>
+            ) : isBuyer && listing.status === "pending" ? (
+              <div className="flex-1 py-3 bg-amber-500/10 border border-amber-500/30 text-amber-400 font-semibold rounded-xl text-center text-sm">
+                ⏳ Pending admin approval
+              </div>
             ) : (
               // Not logged in — show sign in prompt
               <Link href="/login" className="flex-1 py-3 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-colors text-center text-sm">

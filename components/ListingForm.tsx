@@ -16,7 +16,7 @@ export default function ListingForm({ initial, onSubmit, onCancel }: ListingForm
   const [description, setDescription] = useState(initial?.description ?? "");
   const [price, setPrice] = useState(String(initial?.price ?? ""));
   const [category, setCategory] = useState<Category>(initial?.category ?? "Other");
-  const [status, setStatus] = useState<ListingStatus>(initial?.status ?? "active");
+  const [status, setStatus] = useState<ListingStatus>(initial?.status ?? "pending");
   const [images, setImages] = useState<string[]>(initial?.images ?? []);
   const [stock, setStock] = useState(String(initial?.stock ?? ""));
   const [errors, setErrors] = useState<Errors>({});

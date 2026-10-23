@@ -77,18 +77,19 @@ function ListingsContent() {
   }, []);
 
   useEffect(() => {
-    let result = listings;
+    let result = listings.filter((l) => l.status === "active" || (user && l.sellerId === user.id));
     if (categoryFilter !== "All") result = result.filter((l) => l.category === categoryFilter);
     if (statusFilter !== "All") result = result.filter((l) => l.status === statusFilter);
     if (query) result = result.filter((l) => l.title.toLowerCase().includes(query.toLowerCase()) || l.description.toLowerCase().includes(query.toLowerCase()));
     if (minPrice) result = result.filter((l) => l.price >= Number(minPrice));
     if (maxPrice) result = result.filter((l) => l.price <= Number(maxPrice));
     setFiltered(result);
-  }, [listings, query, categoryFilter, statusFilter, minPrice, maxPrice]);
+  }, [listings, query, categoryFilter, statusFilter, minPrice, maxPrice, user]);
 
   const handleCreate = async (data: Partial<Listing>) => {
     const created = await apiCreateListing({
       ...data,
+      status: "pending",
       sellerId: user?.id ?? "",
       sellerName: user?.name ?? "Unknown",
       stock: data.stock ?? 0,
@@ -97,7 +98,7 @@ function ListingsContent() {
     });
     setListings((prev) => [created, ...prev]);
     setCreateOpen(false);
-    showToast("Product created!", "success");
+    showToast("Product submitted for review!", "success");
   };
 
   const handleEdit = async (data: Partial<Listing>) => {

@@ -2,10 +2,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { apiGetDashboardStats, apiGetActivity } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useOrders } from "@/lib/orders-store";
-import type { DashboardStats, ActivityItem } from "@/lib/types";
+import { supabase } from "@/lib/supabase";
+import type { DashboardStats } from "@/lib/types";
 
 const activityIcons: Record<string, string> = {
   listing_created: "📦",
@@ -30,7 +30,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { orders } = useOrders();
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [ordersInTransit, setOrdersInTransit] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const handleLogout = async () => {
@@ -44,14 +44,25 @@ export default function DashboardPage() {
       router.replace("/admin");
       return;
     }
-    Promise.all([apiGetDashboardStats(), apiGetActivity()]).then(([s, a]) => {
-      setStats(s);
-      setActivity(a);
+    async function load() {
+      const [productsRes, convsRes, ordersRes] = await Promise.all([
+        supabase.from("products").select("id, status").eq("seller_id", user!.id),
+        supabase.from("conversations").select("id").or(`participant_a.eq.${user!.id},participant_b.eq.${user!.id}`),
+        supabase.from("buyer_orders").select("id, status").eq("buyer_id", user!.id),
+      ]);
+      const products = productsRes.data ?? [];
+      const myListings = products.length;
+      const activeListings = products.filter((p) => p.status === "active").length;
+      const messages = convsRes.data?.length ?? 0;
+      const allOrders = ordersRes.data ?? [];
+      setStats({ myListings, activeListings, messages, totalViews: 0 });
+      setOrdersInTransit(allOrders.filter((o) => ["placed", "shipped", "processing", "out_for_delivery"].includes(o.status)).length);
       setLoading(false);
-    });
+    }
+    load();
   }, [user]);
 
-  const ordersInTransit = orders.filter((o) => o.buyerId === user?.id && ["placed", "shipped"].includes(o.status)).length;
+  const ordersInTransitCount = ordersInTransit;
 
   const quickActions = [
     { label: "New Listing", href: "/listings?action=create", icon: "+" },
@@ -89,7 +100,7 @@ export default function DashboardPage() {
           <StatCard label="Active" value={stats.activeListings} sub="currently live" color="text-emerald-400" />
           <StatCard label="Messages" value={stats.messages} sub="conversations" color="text-sky-400" />
           <StatCard label="Total Views" value={stats.totalViews} sub="across all listings" color="text-amber-400" />
-          <StatCard label="Orders in Transit" value={ordersInTransit} sub="being shipped" color="text-orange-400" />
+          <StatCard label="Orders in Transit" value={ordersInTransitCount} sub="being shipped" color="text-orange-400" />
         </div>
       )}
 
@@ -118,17 +129,18 @@ export default function DashboardPage() {
             <div className="space-y-3">
               {[...Array(4)].map((_, i) => <div key={i} className="h-12 bg-white/5 rounded-xl animate-pulse" />)}
             </div>
-          ) : activity.length === 0 ? (
+          ) : orders.filter((o) => o.buyerId === user?.id).length === 0 ? (
             <p className="text-gray-500 text-sm text-center py-8">No activity yet.</p>
           ) : (
             <div className="space-y-2">
-              {activity.slice(0, 5).map((item) => (
-                <div key={item.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors">
-                  <span className="text-lg mt-0.5">{activityIcons[item.type] ?? "•"}</span>
+              {orders.filter((o) => o.buyerId === user?.id).slice(0, 5).map((order) => (
+                <div key={order.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors">
+                  <span className="text-lg mt-0.5">🛍️</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-200 truncate">{item.description}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{new Date(item.createdAt).toLocaleDateString()}</p>
+                    <p className="text-sm text-gray-200 truncate">Ordered &quot;{order.listingTitle}&quot;</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{new Date(order.createdAt).toLocaleDateString()}</p>
                   </div>
+                  <span className="text-xs text-violet-400 font-semibold">₱{order.total}</span>
                 </div>
               ))}
             </div>
