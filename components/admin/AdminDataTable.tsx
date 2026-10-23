@@ -76,8 +76,8 @@ export default function AdminDataTable<T>({
         <table className="w-full text-sm">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
-              {columns.map((col) => (
-                <th key={col.key}
+              {columns.map((col, i) => (
+                <th key={`${col.key}-${i}`}
                   onClick={() => col.sortable && toggleSort(col.key)}
                   className={`px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap ${col.sortable ? "cursor-pointer hover:text-slate-800 select-none" : ""}`}>
                   <span className="flex items-center gap-1">
@@ -98,8 +98,8 @@ export default function AdminDataTable<T>({
             ) : (
               paginated.map((row) => (
                 <tr key={keyExtractor(row)} className="hover:bg-slate-50 transition-colors">
-                  {columns.map((col) => (
-                    <td key={col.key} className="px-4 py-3 text-slate-700 whitespace-nowrap">
+                  {columns.map((col, i) => (
+                    <td key={`${col.key}-${i}`} className="px-4 py-3 text-slate-700 whitespace-nowrap">
                       {col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? "")}
                     </td>
                   ))}
