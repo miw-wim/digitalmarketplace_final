@@ -2,12 +2,26 @@
 import { useState, useEffect } from "react";
 import AdminDataTable, { Column } from "@/components/admin/AdminDataTable";
 import Modal from "@/components/Modal";
-import { MOCK_ADMIN_ORDERS } from "@/lib/mock-data";
-import type { AdminOrder, OrderStatus, PaymentMethod } from "@/lib/types";
+import { supabase } from "@/lib/supabase";
+import type { OrderStatus, PaymentMethod } from "@/lib/types";
 
-const delay = () => new Promise((r) => setTimeout(r, 800));
+interface RealOrder {
+  id: string;
+  listing_title: string;
+  listing_image: string;
+  buyer_name: string;
+  seller_name: string;
+  total: number;
+  payment_method: PaymentMethod;
+  status: OrderStatus;
+  created_at: string;
+  shipping_address: Record<string, string>;
+  timeline: { status: string; timestamp: string; note?: string }[];
+  courier_name?: string;
+  tracking_number?: string;
+}
 
-const statusColors: Record<OrderStatus, string> = {
+const statusColors: Record<string, string> = {
   placed: "bg-sky-100 text-sky-700",
   processing: "bg-amber-100 text-amber-700",
   shipped: "bg-violet-100 text-violet-700",
@@ -19,50 +33,60 @@ const statusColors: Record<OrderStatus, string> = {
   refunded: "bg-orange-100 text-orange-700",
 };
 
-const statusLabels: Record<OrderStatus, string> = {
+const statusLabels: Record<string, string> = {
   placed: "Placed", processing: "Processing", shipped: "Shipped",
   out_for_delivery: "Out for Delivery", delivered: "Delivered",
   completed: "Completed", cancelled: "Cancelled", disputed: "Disputed", refunded: "Refunded",
 };
 
 export default function AdminOrdersPage() {
-  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [orders, setOrders] = useState<RealOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
-  const [paymentFilter, setPaymentFilter] = useState<PaymentMethod | "all">("all");
-  const [selected, setSelected] = useState<AdminOrder | null>(null);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [selected, setSelected] = useState<RealOrder | null>(null);
 
   useEffect(() => {
-    delay().then(() => { setOrders(MOCK_ADMIN_ORDERS); setLoading(false); });
+    async function load() {
+      const { data, error } = await supabase
+        .from("buyer_orders")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (!error) setOrders(data ?? []);
+      setLoading(false);
+    }
+    load();
   }, []);
 
   const filtered = orders.filter((o) => {
     if (statusFilter !== "all" && o.status !== statusFilter) return false;
-    if (paymentFilter !== "all" && o.paymentMethod !== paymentFilter) return false;
+    if (paymentFilter !== "all" && o.payment_method !== paymentFilter) return false;
     return true;
   });
 
-  const columns: Column<AdminOrder>[] = [
-    { key: "id", header: "Order #", sortable: true, render: (o) => <span className="font-mono text-xs text-slate-600">{o.id}</span> },
-    { key: "listingTitle", header: "Item", sortable: true, render: (o) => (
+  const columns: Column<RealOrder>[] = [
+    { key: "id", header: "Order #", sortable: true, render: (o) => <span className="font-mono text-xs text-slate-600">{o.id.slice(0, 8)}</span> },
+    { key: "listing_title", header: "Item", sortable: true, render: (o) => (
       <div className="flex items-center gap-2">
-        <img src={o.listingImage} alt={o.listingTitle} className="w-8 h-8 rounded-lg object-cover shrink-0" />
-        <span className="max-w-[140px] truncate font-medium text-slate-800">{o.listingTitle}</span>
+        {o.listing_image && <img src={o.listing_image} alt={o.listing_title} className="w-8 h-8 rounded-lg object-cover shrink-0" />}
+        <span className="max-w-[140px] truncate font-medium text-slate-800">{o.listing_title}</span>
       </div>
     )},
-    { key: "buyerName", header: "Buyer", sortable: true },
-    { key: "sellerName", header: "Seller", sortable: true },
+    { key: "buyer_name", header: "Buyer", sortable: true },
+    { key: "seller_name", header: "Seller", sortable: true },
     { key: "total", header: "Total", sortable: true, render: (o) => <span className="font-semibold text-violet-600">₱{o.total}</span> },
-    { key: "paymentMethod", header: "Payment", render: (o) => (
-      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${o.paymentMethod === "gcash" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600"}`}>
-        {o.paymentMethod === "gcash" ? "GCash" : "COD"}
+    { key: "payment_method", header: "Payment", render: (o) => (
+      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${o.payment_method === "gcash" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600"}`}>
+        {o.payment_method === "gcash" ? "GCash" : "COD"}
       </span>
     )},
     { key: "status", header: "Status", render: (o) => (
-      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[o.status]}`}>{statusLabels[o.status]}</span>
+      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[o.status] ?? "bg-slate-100 text-slate-600"}`}>
+        {statusLabels[o.status] ?? o.status}
+      </span>
     )},
-    { key: "createdAt", header: "Date", sortable: true, render: (o) => new Date(o.createdAt).toLocaleDateString() },
-    { key: "actions", header: "", render: (o) => (
+    { key: "created_at", header: "Date", sortable: true, render: (o) => new Date(o.created_at).toLocaleDateString() },
+    { key: "actions" as keyof RealOrder, header: "", render: (o) => (
       <button onClick={() => setSelected(o)} className="text-xs px-2.5 py-1 rounded-lg bg-violet-50 text-violet-600 hover:bg-violet-100 font-medium transition-colors">
         View
       </button>
@@ -72,12 +96,12 @@ export default function AdminOrdersPage() {
   return (
     <div className="space-y-5 animate-fade-in">
       <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap gap-3 items-center">
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as OrderStatus | "all")}
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
           className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 bg-white focus:outline-none focus:border-violet-400">
           <option value="all">All Status</option>
-          {(Object.keys(statusLabels) as OrderStatus[]).map((s) => <option key={s} value={s}>{statusLabels[s]}</option>)}
+          {Object.entries(statusLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>
-        <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value as PaymentMethod | "all")}
+        <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)}
           className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 bg-white focus:outline-none focus:border-violet-400">
           <option value="all">All Payment</option>
           <option value="gcash">GCash</option>
@@ -89,70 +113,46 @@ export default function AdminOrdersPage() {
       <div className="bg-white border border-slate-200 rounded-2xl p-4">
         <AdminDataTable columns={columns} data={filtered} loading={loading}
           keyExtractor={(o) => o.id} emptyMessage="No orders found."
-          searchable searchKeys={["id", "buyerName"]} pageSize={8} />
+          searchable searchKeys={["id", "buyer_name", "listing_title"]} pageSize={10} />
       </div>
 
-      <Modal open={!!selected} onClose={() => setSelected(null)} title={`Order ${selected?.id}`} size="lg">
+      <Modal open={!!selected} onClose={() => setSelected(null)} title={`Order ${selected?.id.slice(0, 8)}`} size="lg">
         {selected && (
           <div className="space-y-5 text-sm">
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Buyer</p>
-                <p className="font-medium text-white">{selected.buyerName}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Seller</p>
-                <p className="font-medium text-white">{selected.sellerName}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Payment</p>
-                <p className="font-medium text-white">{selected.paymentMethod === "gcash" ? "GCash" : "COD"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-400 mb-1">Total</p>
-                <p className="font-semibold text-violet-400">₱{selected.total}</p>
-              </div>
-              {selected.courierName && (
-                <div>
-                  <p className="text-xs text-slate-400 mb-1">Courier</p>
-                  <p className="font-medium text-white">{selected.courierName}</p>
-                </div>
-              )}
-              {selected.trackingNumber && (
-                <div>
-                  <p className="text-xs text-slate-400 mb-1">Tracking #</p>
-                  <p className="font-mono text-white">{selected.trackingNumber}</p>
-                </div>
-              )}
+              <div><p className="text-xs text-slate-400 mb-1">Buyer</p><p className="font-medium text-white">{selected.buyer_name}</p></div>
+              <div><p className="text-xs text-slate-400 mb-1">Seller</p><p className="font-medium text-white">{selected.seller_name}</p></div>
+              <div><p className="text-xs text-slate-400 mb-1">Payment</p><p className="font-medium text-white">{selected.payment_method === "gcash" ? "GCash" : "COD"}</p></div>
+              <div><p className="text-xs text-slate-400 mb-1">Total</p><p className="font-semibold text-violet-400">₱{selected.total}</p></div>
+              {selected.courier_name && <div><p className="text-xs text-slate-400 mb-1">Courier</p><p className="font-medium text-white">{selected.courier_name}</p></div>}
+              {selected.tracking_number && <div><p className="text-xs text-slate-400 mb-1">Tracking #</p><p className="font-mono text-white">{selected.tracking_number}</p></div>}
             </div>
-
-            <div>
-              <p className="text-xs text-slate-400 mb-2">Shipping Address</p>
-              <div className="bg-white/5 rounded-xl p-3 text-slate-300 leading-relaxed">
-                {selected.shippingAddress.fullName} · {selected.shippingAddress.mobile}<br />
-                {selected.shippingAddress.street}, {selected.shippingAddress.barangay}<br />
-                {selected.shippingAddress.city}, {selected.shippingAddress.province} {selected.shippingAddress.postalCode}
+            {selected.shipping_address && (
+              <div>
+                <p className="text-xs text-slate-400 mb-2">Shipping Address</p>
+                <div className="bg-white/5 rounded-xl p-3 text-slate-300 leading-relaxed">
+                  {selected.shipping_address.fullName} · {selected.shipping_address.mobile}<br />
+                  {selected.shipping_address.street}, {selected.shipping_address.barangay}<br />
+                  {selected.shipping_address.city}, {selected.shipping_address.province} {selected.shipping_address.postalCode}
+                </div>
               </div>
-            </div>
-
-            <div>
-              <p className="text-xs text-slate-400 mb-2">Order Timeline</p>
-              <div className="space-y-2">
-                {selected.timeline.map((t, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full bg-violet-500 mt-1.5 shrink-0" />
-                    <div>
-                      <p className="text-white font-medium capitalize">{statusLabels[t.status]}</p>
-                      <p className="text-xs text-slate-400">{new Date(t.timestamp).toLocaleString()}{t.note ? ` · ${t.note}` : ""}</p>
+            )}
+            {selected.timeline?.length > 0 && (
+              <div>
+                <p className="text-xs text-slate-400 mb-2">Order Timeline</p>
+                <div className="space-y-2">
+                  {selected.timeline.map((t, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="w-2 h-2 rounded-full bg-violet-500 mt-1.5 shrink-0" />
+                      <div>
+                        <p className="text-white font-medium capitalize">{statusLabels[t.status] ?? t.status}</p>
+                        <p className="text-xs text-slate-400">{new Date(t.timestamp).toLocaleString()}{t.note ? ` · ${t.note}` : ""}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-
-            <p className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
-              ℹ️ Shipping updates are handled by the seller.
-            </p>
+            )}
           </div>
         )}
       </Modal>
