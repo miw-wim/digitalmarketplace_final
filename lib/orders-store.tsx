@@ -125,9 +125,19 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     const newTimeline = [...order.timeline, { status, timestamp: new Date().toISOString(), note }];
     await supabase.from("buyer_orders").update({ status, payment_status: paymentStatus, timeline: newTimeline }).eq("id", orderId);
 
-    // Decrement stock when buyer confirms received (completed)
+    // Decrement stock and increment stock_sold when order is completed
     if (status === "completed") {
-      await supabase.rpc("decrement_stock", { product_id: order.listingId });
+      const { data: product } = await supabase
+        .from("products")
+        .select("stock, stock_sold")
+        .eq("id", order.listingId)
+        .single();
+      if (product) {
+        await supabase.from("products").update({
+          stock: Math.max(0, product.stock - 1),
+          stock_sold: product.stock_sold + 1,
+        }).eq("id", order.listingId);
+      }
     }
 
     setOrders((prev) => prev.map((o) => o.id !== orderId ? o : { ...o, status, paymentStatus, timeline: newTimeline }));
