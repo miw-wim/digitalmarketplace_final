@@ -26,17 +26,12 @@ function StatCard({ label, value, sub, color }: { label: string; value: number |
 }
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const { orders } = useOrders();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [ordersInTransit, setOrdersInTransit] = useState(0);
   const [loading, setLoading] = useState(true);
-
-  const handleLogout = async () => {
-    await logout();
-    router.push("/");
-  };
 
   useEffect(() => {
     if (!user) return;
@@ -83,10 +78,7 @@ export default function DashboardPage() {
           </h1>
           <p className="text-gray-400 mt-1">Here&apos;s what&apos;s happening with your marketplace activity.</p>
         </div>
-        <button onClick={handleLogout}
-          className="px-4 py-2 bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/40 text-gray-400 hover:text-red-400 text-sm font-medium rounded-xl transition-all">
-          Log out
-        </button>
+
       </div>
 
       {/* Stats */}
