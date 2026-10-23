@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { apiGetConversations, apiGetMessages, apiSendMessage, apiGetOrCreateConversation } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase";
+import { pushNotification } from "@/lib/notifications-store";
 import type { Conversation, Message } from "@/lib/types";
 
 function timeAgo(iso: string) {
@@ -158,6 +159,12 @@ function MessagesContent() {
             ? { ...c, lastMessage: content, lastMessageAt: saved.createdAt }
             : c
         )
+      );
+      // Notify the other participant
+      await pushNotification(
+        activeConv.participantId,
+        `New message from ${user.name}`,
+        content.length > 60 ? content.slice(0, 60) + "…" : content
       );
     } catch {
       // Remove optimistic on failure

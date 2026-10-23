@@ -100,7 +100,7 @@ export default function Navbar() {
               {/* Notification bell */}
               <div className="relative" ref={notifRef}>
                 <button
-                  onClick={() => { setNotifOpen((o) => !o); setDropdownOpen(false); }}
+                  onClick={() => { setNotifOpen((o) => !o); setDropdownOpen(false); if (!notifOpen) markAllAsRead(); }}
                   className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/5 transition-colors text-gray-400 hover:text-white"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
