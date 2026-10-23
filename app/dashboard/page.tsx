@@ -64,7 +64,7 @@ export default function DashboardPage() {
     { label: "My Listings", href: "/listings?mine=true", icon: "📋" },
     { label: "My Sales", href: "/sales", icon: "🏪" },
     { label: "Messages", href: "/messages", icon: "💬" },
-    { label: "Activity", href: "/activity", icon: "📊" },
+    { label: "Notifications", href: "/activity", icon: "🔔" },
     { label: "My Purchases", href: "/purchases", icon: "🛍️" },
   ];
 

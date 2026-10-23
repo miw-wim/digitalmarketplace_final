@@ -12,7 +12,6 @@ const userLinks = [
   { href: "/listings", label: "Products" },
   { href: "/messages", label: "Messages" },
   { href: "/sales", label: "My Sales" },
-  { href: "/activity", label: "Activity" },
 ];
 
 const adminLinks = [
