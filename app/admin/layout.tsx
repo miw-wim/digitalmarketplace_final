@@ -8,7 +8,7 @@ import AdminTopBar from "@/components/admin/AdminTopBar";
 const pageTitles: Record<string, string> = {
   "/admin": "Overview",
   "/admin/users": "Users",
-  "/admin/listings": "Listings",
+  "/admin/listings": "Products",
   "/admin/orders": "Orders",
   "/admin/disputes": "Disputes",
   "/admin/payments": "Payments",
