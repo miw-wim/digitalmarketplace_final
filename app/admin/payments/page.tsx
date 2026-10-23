@@ -69,12 +69,12 @@ export default function AdminPaymentsPage() {
     { key: "listing_title", header: "Item", sortable: true, render: (p) => <span className="max-w-[140px] truncate block">{p.listing_title}</span> },
     { key: "buyer_name", header: "Buyer", sortable: true },
     { key: "seller_name", header: "Seller", sortable: true },
-    { key: "gcash_payment", header: "Ref #", render: (p) => <span className="font-mono text-xs">{p.gcash_payment?.referenceNo ?? "—"}</span> },
-    { key: "gcash_payment", header: "GCash #", render: (p) => {
+    { key: "gcash_ref", header: "Ref #", render: (p) => <span className="font-mono text-xs">{p.gcash_payment?.referenceNo ?? "—"}</span> },
+    { key: "gcash_number", header: "GCash #", render: (p) => {
       const n = p.gcash_payment?.number;
       return <span className="font-mono text-xs">{n ? `${n.slice(0, 4)}***${n.slice(-3)}` : "—"}</span>;
     }},
-    { key: "gcash_payment", header: "Account", render: (p) => <span>{p.gcash_payment?.accountName ?? "—"}</span> },
+    { key: "gcash_account", header: "Account", render: (p) => <span>{p.gcash_payment?.accountName ?? "—"}</span> },
     { key: "total", header: "Amount", sortable: true, render: (p) => <span className="font-semibold text-violet-600">₱{p.total}</span> },
     { key: "payment_status", header: "Status", render: (p) => (
       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[p.payment_status] ?? "bg-slate-100 text-slate-600"}`}>
