@@ -115,14 +115,7 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* CTA */}
-        <div className="mt-16 rounded-2xl bg-gradient-to-r from-violet-900/40 to-fuchsia-900/20 border border-violet-500/20 p-8 sm:p-12 text-center">
-          <h3 className="text-2xl font-bold text-white mb-2">Have something to sell?</h3>
-          <p className="text-gray-400 mb-6">List your items in minutes and reach hundreds of students.</p>
-          <Link href="/register" className="inline-block bg-violet-600 hover:bg-violet-500 text-white font-semibold px-8 py-3 rounded-xl transition-colors">
-            Start selling on Shopora
-          </Link>
-        </div>
+
       </div>
     </div>
   );
