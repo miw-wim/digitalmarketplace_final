@@ -35,15 +35,19 @@ export default function AdminReportsPage() {
         .gte("created_at", dateFrom)
         .lte("created_at", dateTo + "T23:59:59");
       const rows = data ?? [];
-      // Group by month
+      // Group by month — all orders contribute to revenue chart
       const map: Record<string, { total: number; count: number }> = {};
-      rows.filter((r) => r.status === "completed").forEach((r) => {
+      rows.forEach((r) => {
         const month = new Date(r.created_at).toLocaleString("default", { month: "short", year: "2-digit" });
         if (!map[month]) map[month] = { total: 0, count: 0 };
         map[month].total += Number(r.total);
-        map[month].count += 1;
+        if (r.status === "completed") map[month].count += 1;
       });
-      setSalesRows(Object.entries(map).map(([month, v]) => ({ month, ...v })));
+      // Sort chronologically
+      const sorted = Object.entries(map)
+        .map(([month, v]) => ({ month, ...v }))
+        .sort((a, b) => new Date("1 " + a.month) > new Date("1 " + b.month) ? 1 : -1);
+      setSalesRows(sorted);
     }
 
     if (reportType === "users") {
@@ -93,7 +97,6 @@ export default function AdminReportsPage() {
     users: [
       { label: "Total Users", value: userRows.length, color: "violet" as const },
       { label: "Active", value: userRows.filter((u) => u.is_active).length, color: "green" as const },
-      { label: "Admins", value: userRows.filter((u) => u.role === "admin").length, color: "blue" as const },
     ],
     orders: [
       { label: "Total Orders", value: orderRows.length, color: "blue" as const },
@@ -173,10 +176,12 @@ export default function AdminReportsPage() {
         </div>
       )}
 
-      {/* Sales chart */}
-      {reportType === "sales" && salesRows.length > 0 && (
+      {/* Sales chart — always shown when reportType is sales */}
+      {reportType === "sales" && (
         <ChartCard title="Revenue Over Time">
-          {loading ? <div className="h-40 bg-slate-100 rounded-xl animate-pulse" /> : (
+          {loading ? <div className="h-40 bg-slate-100 rounded-xl animate-pulse" /> : salesRows.length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-slate-400 text-sm">No orders found for the selected period.</div>
+          ) : (
             <div className="h-40 flex items-end gap-2">
               {salesRows.map((s) => (
                 <div key={s.month} className="flex-1 flex flex-col items-center gap-1">

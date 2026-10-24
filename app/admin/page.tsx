@@ -101,7 +101,7 @@ const maxSales = Math.max(...sales.map((s) => s.amount), 1);
       )}
 
       {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard title="Sales Over Time" action={<span className="text-xs text-slate-400">Last 6 months</span>}>
           {loading ? <div className="h-40 bg-slate-100 rounded-xl animate-pulse" /> : (
             <div className="h-40 flex items-end gap-2">
@@ -132,23 +132,24 @@ const maxSales = Math.max(...sales.map((s) => s.amount), 1);
             </div>
           )}
         </ChartCard>
-
-        <ChartCard title="Listings by Category">
-          {loading ? <div className="h-40 bg-slate-100 rounded-xl animate-pulse" /> : (
-            <div className="space-y-2">
-              {categoryData.map((c) => (
-                <div key={c.category} className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500 w-20 shrink-0">{c.category}</span>
-                  <div className="flex-1 bg-slate-100 rounded-full h-2">
-                    <div className="bg-violet-500 h-2 rounded-full transition-all" style={{ width: `${(c.count / maxCat) * 100}%` }} />
-                  </div>
-                  <span className="text-xs font-medium text-slate-600 w-6 text-right">{c.count}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </ChartCard>
       </div>
+
+      {/* Listings by Category — full width at bottom */}
+      <ChartCard title="Listings by Category">
+        {loading ? <div className="h-40 bg-slate-100 rounded-xl animate-pulse" /> : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
+            {categoryData.map((c) => (
+              <div key={c.category} className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 w-24 shrink-0">{c.category}</span>
+                <div className="flex-1 bg-slate-100 rounded-full h-2">
+                  <div className="bg-violet-500 h-2 rounded-full transition-all" style={{ width: `${(c.count / maxCat) * 100}%` }} />
+                </div>
+                <span className="text-xs font-medium text-slate-600 w-6 text-right">{c.count}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </ChartCard>
 
     </div>
   );
