@@ -52,6 +52,7 @@ export async function apiGetListings(): Promise<Listing[]> {
   const { data, error } = await supabase
     .from("products")
     .select("*")
+    .gt("stock", 0)
     .order("created_at", { ascending: false });
   if (error) {
     console.error("apiGetListings error:", error.message);
