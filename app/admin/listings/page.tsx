@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import AdminDataTable, { Column } from "@/components/admin/AdminDataTable";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import { useToast } from "@/components/Toast";
-import { supabase } from "@/lib/supabase";
+import { useSettings } from "@/lib/settings-store";
 import type { AdminListing, ListingStatus } from "@/lib/types";
 
 const statusColors: Record<ListingStatus, string> = {
@@ -32,6 +32,7 @@ function rowToListing(row: Record<string, unknown>): AdminListing {
 
 export default function AdminListingsPage() {
   const { showToast } = useToast();
+  const { categories } = useSettings();
   const [listings, setListings] = useState<AdminListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"pending" | "all">("pending");
@@ -44,11 +45,9 @@ export default function AdminListingsPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) { showToast("Failed to load products.", "error"); setLoading(false); return; }
+      const res = await fetch("/api/admin/products");
+      if (!res.ok) { showToast("Failed to load products.", "error"); setLoading(false); return; }
+      const data = await res.json();
       setListings((data ?? []).map(rowToListing));
       setLoading(false);
     }
@@ -62,10 +61,19 @@ export default function AdminListingsPage() {
     return true;
   });
 
+  const patchProduct = async (id: string, updates: Record<string, unknown>) => {
+    const res = await fetch("/api/admin/products", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...updates }),
+    });
+    return res.ok;
+  };
+
   const handleApprove = async () => {
     if (!confirm) return;
-    const { error } = await supabase.from("products").update({ status: "active" }).eq("id", confirm.listing.id);
-    if (error) { showToast("Failed to approve.", "error"); setConfirm(null); return; }
+    const ok = await patchProduct(confirm.listing.id, { status: "active" });
+    if (!ok) { showToast("Failed to approve.", "error"); setConfirm(null); return; }
     setListings((prev) => prev.map((l) => l.id === confirm.listing.id ? { ...l, status: "active" as ListingStatus } : l));
     showToast("Product approved — now live!", "success");
     setConfirm(null);
@@ -74,8 +82,8 @@ export default function AdminListingsPage() {
   const handleReject = async () => {
     if (!confirm) return;
     if (!rejectReason.trim()) { setRejectError("Reason is required."); return; }
-    const { error } = await supabase.from("products").update({ status: "removed", rejection_reason: rejectReason }).eq("id", confirm.listing.id);
-    if (error) { showToast("Failed to reject.", "error"); setConfirm(null); return; }
+    const ok = await patchProduct(confirm.listing.id, { status: "removed", rejection_reason: rejectReason });
+    if (!ok) { showToast("Failed to reject.", "error"); setConfirm(null); return; }
     setListings((prev) => prev.map((l) => l.id === confirm.listing.id ? { ...l, status: "removed" as ListingStatus, rejectionReason: rejectReason } : l));
     showToast("Product rejected.", "success");
     setConfirm(null); setRejectReason(""); setRejectError("");
@@ -83,14 +91,13 @@ export default function AdminListingsPage() {
 
   const handleRemove = async () => {
     if (!confirm) return;
-    const { error } = await supabase.from("products").update({ status: "removed" }).eq("id", confirm.listing.id);
-    if (error) { showToast("Failed to remove.", "error"); setConfirm(null); return; }
+    const ok = await patchProduct(confirm.listing.id, { status: "removed" });
+    if (!ok) { showToast("Failed to remove.", "error"); setConfirm(null); return; }
     setListings((prev) => prev.map((l) => l.id === confirm.listing.id ? { ...l, status: "removed" as ListingStatus } : l));
     showToast("Product removed.", "success");
     setConfirm(null);
   };
 
-  const categories = [...new Set(listings.map((l) => l.category))];
 
   const columns: Column<AdminListing>[] = [
     { key: "title", header: "Title", sortable: true, render: (l) => (

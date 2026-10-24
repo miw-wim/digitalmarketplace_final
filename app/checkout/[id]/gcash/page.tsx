@@ -9,8 +9,7 @@ import GcashDemoForm from "@/components/GcashDemoForm";
 import { apiGetListing } from "@/lib/api";
 import { useState, useEffect } from "react";
 import type { Listing, Order, ShippingAddress } from "@/lib/types";
-
-const SHIPPING_FEE = 80;
+import { useSettings } from "@/lib/settings-store";
 
 function GcashPaymentInner({ id }: { id: string }) {
   const router = useRouter();
@@ -18,6 +17,7 @@ function GcashPaymentInner({ id }: { id: string }) {
   const { user } = useAuth();
   const { addOrder } = useOrders();
   const { showToast } = useToast();
+  const { shippingFee: SHIPPING_FEE } = useSettings();
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
 

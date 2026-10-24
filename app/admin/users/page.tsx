@@ -89,7 +89,9 @@ export default function AdminUsersPage() {
     { key: "verified", header: "Verified", render: (u) => (
       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${u.verified ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{u.verified ? "Verified" : "Unverified"}</span>
     )},
-    { key: "listingsCount", header: "Listings", sortable: true },
+    { key: "listingsCount", header: "Products", sortable: true, render: (u) => (
+      <span className="inline-flex items-center justify-center min-w-[1.5rem] px-2 py-0.5 rounded-full text-xs font-semibold bg-violet-100 text-violet-700">{u.listingsCount}</span>
+    )},
     { key: "joinedAt", header: "Joined", sortable: true, render: (u) => new Date(u.joinedAt).toLocaleDateString() },
     { key: "status", header: "Status", render: (u) => (
       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${u.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>{u.status}</span>

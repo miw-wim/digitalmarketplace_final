@@ -8,13 +8,13 @@ import { useOrders } from "@/lib/orders-store";
 import PaymentMethodSelector from "@/components/PaymentMethodSelector";
 import { useToast } from "@/components/Toast";
 import type { Listing, PaymentMethod, Order } from "@/lib/types";
-
-const SHIPPING_FEE = 80;
+import { useSettings } from "@/lib/settings-store";
 
 export default function CheckoutPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const { user } = useAuth();
+  const { shippingFee } = useSettings();
   const { addOrder } = useOrders();
   const { showToast } = useToast();
 
@@ -22,6 +22,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
   const [loading, setLoading] = useState(true);
   const [method, setMethod] = useState<PaymentMethod>("gcash");
   const [placing, setPlacing] = useState(false);
+  const [qty, setQty] = useState(1);
 
   useEffect(() => {
     apiGetListing(id).then((l) => { setListing(l); setLoading(false); });
@@ -58,7 +59,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
   }
 
   const addr = user.address;
-  const total = listing.price + SHIPPING_FEE;
+  const itemTotal = listing.price * qty;
+  const total = itemTotal + shippingFee;
 
   const handleCOD = async () => {
     if (!addr) return;
@@ -70,8 +72,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
       listingTitle: listing.title,
       listingImage: listing.images[0] ?? "",
       listingPrice: listing.price,
-      shippingFee: SHIPPING_FEE,
+      shippingFee: shippingFee,
       total,
+      quantity: qty,
       sellerId: listing.sellerId,
       sellerName: listing.sellerName,
       sellerCity: "Metro Manila",
@@ -91,7 +94,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
 
   const handleGCash = () => {
     if (!addr) return;
-    const p = new URLSearchParams({ addr: JSON.stringify(addr), total: String(total) });
+    const p = new URLSearchParams({ addr: JSON.stringify(addr), total: String(total), qty: String(qty) });
     router.push(`/checkout/${id}/gcash?${p.toString()}`);
   };
 
@@ -174,15 +177,38 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
                 <p className="text-xs text-gray-500 mt-0.5">Sold by {listing.sellerName}</p>
               </div>
             </div>
+
+            {/* Quantity selector */}
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
+              <span className="text-sm text-gray-400">Quantity</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setQty((q) => Math.max(1, q - 1))}
+                  className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold transition-colors flex items-center justify-center"
+                >−</button>
+                <span className="text-white font-semibold w-6 text-center">{qty}</span>
+                <button
+                  onClick={() => setQty((q) => Math.min(listing.stock, q + 1))}
+                  disabled={qty >= listing.stock}
+                  className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white font-bold transition-colors flex items-center justify-center"
+                >+</button>
+              </div>
+            </div>
             <div className="space-y-2 text-sm border-t border-white/10 pt-4">
               <div className="flex justify-between text-gray-400">
-                <span>Item price</span><span>₱{listing.price}</span>
+                <span>Item price</span><span>₱{listing.price.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-gray-400">
-                <span>Shipping fee</span><span>₱{SHIPPING_FEE}</span>
+                <span>Quantity</span><span>× {qty}</span>
+              </div>
+              <div className="flex justify-between text-gray-300">
+                <span>Subtotal</span><span>₱{itemTotal.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-gray-400">
+                <span>Shipping fee</span><span>₱{shippingFee}</span>
               </div>
               <div className="flex justify-between text-white font-bold text-base pt-2 border-t border-white/10">
-                <span>Total</span><span>₱{total}</span>
+                <span>Total</span><span>₱{total.toLocaleString()}</span>
               </div>
             </div>
 

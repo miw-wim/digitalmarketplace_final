@@ -7,6 +7,7 @@ import ListingForm from "@/components/ListingForm";
 import { useToast } from "@/components/Toast";
 import { apiGetListing, apiUpdateListing, apiDeleteListing } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useCart } from "@/lib/cart-store";
 import type { Listing } from "@/lib/types";
 
 const statusColors: Record<string, string> = {
@@ -21,6 +22,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
   const router = useRouter();
   const { showToast } = useToast();
   const { user } = useAuth();
+  const { addToCart, items } = useCart();
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
@@ -32,11 +34,34 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
   };
 
   useEffect(() => {
-    apiGetListing(id).then((data) => { setListing(data); setLoading(false); });
-  }, [id]);
+    apiGetListing(id).then((data) => {
+      // Block buyers from viewing pending products directly
+      if (data && data.status === "pending" && user && user.id !== data.sellerId && user.role !== "admin") {
+        router.replace("/listings");
+        return;
+      }
+      setListing(data);
+      setLoading(false);
+    });
+  }, [id, user]);
 
   const isSeller = !!user && !!listing && user.id === listing.sellerId;
-  const isBuyer = !!user && !!listing && user.id !== listing.sellerId;
+  const isBuyer = !!user && !!listing && user.id !== listing.sellerId && user.role !== "admin";
+  const inCart = items.some((i) => i.listingId === listing?.id);
+
+  const handleAddToCart = () => {
+    if (!listing) return;
+    addToCart({
+      listingId: listing.id,
+      title: listing.title,
+      image: listing.images[0] ?? "",
+      price: listing.price,
+      sellerName: listing.sellerName,
+      sellerId: listing.sellerId,
+      stock: listing.stock,
+    });
+    showToast("Added to cart!", "success");
+  };
 
   const handleEdit = async (data: Partial<Listing>) => {
     if (!listing) return;
@@ -83,9 +108,9 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
         ← Back to products
       </Link>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-8 mt-4">
         {/* Image */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden h-72 md:h-auto">
+        <div className="md:col-span-3 bg-white/5 border border-white/10 rounded-2xl overflow-hidden h-80 md:h-[480px]">
           {listing.images[0] ? (
             <img src={listing.images[0]} alt={listing.title} className="w-full h-full object-cover" />
           ) : (
@@ -97,7 +122,7 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
           )}
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="md:col-span-2 flex flex-col gap-4">
           <div>
             <div className="flex items-start justify-between gap-3 mb-2">
               <h1 className="text-2xl font-black text-white leading-tight">{listing.title}</h1>
@@ -141,15 +166,25 @@ export default function ListingDetailPage({ params }: { params: Promise<{ id: st
                 </button>
               </>
             ) : isBuyer && listing.status === "active" ? (
-              <>
-                <Link href={`/messages?with=${listing.sellerId}&name=${encodeURIComponent(listing.sellerName)}`} className="flex-1 py-3 bg-white/10 hover:bg-white/15 text-white font-semibold rounded-xl transition-colors text-center text-sm">
-                  Message Seller
-                </Link>
-                <Link href={`/checkout/${listing.id}`}
-                  className="flex-1 py-3 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-colors text-center text-sm">
-                  Buy now
-                </Link>
-              </>
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-3">
+                  <Link href={`/messages?with=${listing.sellerId}&name=${encodeURIComponent(listing.sellerName)}`} className="flex-1 py-3 bg-white/10 hover:bg-white/15 text-white font-semibold rounded-xl transition-colors text-center text-sm whitespace-nowrap">
+                    Message Seller
+                  </Link>
+                  <Link href={`/checkout/${listing.id}`}
+                    className="flex-1 py-3 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-colors text-center text-sm">
+                    Buy now
+                  </Link>
+                </div>
+                <button onClick={handleAddToCart}
+                  className={`w-full py-3 border font-semibold rounded-xl transition-colors text-sm ${
+                    inCart
+                      ? "bg-emerald-600/20 border-emerald-500/30 text-emerald-400"
+                      : "bg-white/5 border-white/15 text-gray-300 hover:bg-white/10 hover:text-white"
+                  }`}>
+                  {inCart ? "✓ Added to Cart" : "🛒 Add to Cart"}
+                </button>
+              </div>
             ) : isBuyer && listing.status === "sold" ? (
               <>
                 <Link href={`/messages?with=${listing.sellerId}&name=${encodeURIComponent(listing.sellerName)}`} className="flex-1 py-3 bg-white/10 hover:bg-white/15 text-white font-semibold rounded-xl transition-colors text-center text-sm">

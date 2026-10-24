@@ -63,8 +63,7 @@ export default function DashboardPage() {
     { label: "New Listing", href: "/listings?action=create", icon: "+" },
     { label: "My Listings", href: "/listings?mine=true", icon: "📋" },
     { label: "My Sales", href: "/sales", icon: "🏪" },
-    { label: "Messages", href: "/messages", icon: "💬" },
-    { label: "Notifications", href: "/activity", icon: "🔔" },
+    { label: "My Cart", href: "/cart", icon: "🛒" },
     { label: "My Purchases", href: "/purchases", icon: "🛍️" },
   ];
 
@@ -83,15 +82,14 @@ export default function DashboardPage() {
 
       {/* Stats */}
       {loading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-          {[...Array(5)].map((_, i) => <div key={i} className="bg-white/5 rounded-2xl h-28 animate-pulse" />)}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {[...Array(4)].map((_, i) => <div key={i} className="bg-white/5 rounded-2xl h-28 animate-pulse" />)}
         </div>
       ) : stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard label="My Listings" value={stats.myListings} sub="total posted" color="text-violet-400" />
           <StatCard label="Active" value={stats.activeListings} sub="currently live" color="text-emerald-400" />
           <StatCard label="Messages" value={stats.messages} sub="conversations" color="text-sky-400" />
-          <StatCard label="Total Views" value={stats.totalViews} sub="across all listings" color="text-amber-400" />
           <StatCard label="Orders in Transit" value={ordersInTransitCount} sub="being shipped" color="text-orange-400" />
         </div>
       )}

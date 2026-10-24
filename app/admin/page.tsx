@@ -2,9 +2,8 @@
 import { useState, useEffect } from "react";
 import StatCard from "@/components/admin/StatCard";
 import ChartCard from "@/components/admin/ChartCard";
-import Link from "next/link";
 import type { SalesDataPoint, OrderStatusDataPoint, CategoryDataPoint } from "@/lib/types";
-import { MOCK_SALES_DATA, MOCK_ORDER_STATUS_DATA, MOCK_CATEGORY_DATA, MOCK_ACTIVITY_LOGS } from "@/lib/mock-data";
+import { MOCK_SALES_DATA, MOCK_ORDER_STATUS_DATA, MOCK_CATEGORY_DATA } from "@/lib/mock-data";
 import { supabase } from "@/lib/supabase";
 
 interface RealStats {
@@ -13,16 +12,8 @@ interface RealStats {
   activeListings: number;
   totalOrders: number;
   totalSalesAmount: number;
-  openDisputes: number;
   pendingModeration: number;
 }
-
-const actionIcons: Record<string, string> = {
-  login: "🔐", listing_created: "📦", listing_approved: "✅", listing_rejected: "❌",
-  order_placed: "🛒", dispute_opened: "⚠️", dispute_resolved: "🔒", user_suspended: "🚫",
-  user_activated: "✅", role_changed: "👑", message_sent: "💬", account_created: "👤",
-  listing_removed: "🗑️", order_status_changed: "🔄", logout: "👋",
-};
 
 export default function AdminOverviewPage() {
   const [stats, setStats] = useState<RealStats | null>(null);
@@ -30,8 +21,6 @@ export default function AdminOverviewPage() {
   const [orderStatus, setOrderStatus] = useState<OrderStatusDataPoint[]>(MOCK_ORDER_STATUS_DATA);
   const [categoryData, setCategoryData] = useState<CategoryDataPoint[]>(MOCK_CATEGORY_DATA);
   const [loading, setLoading] = useState(true);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [openDisputeCount, setOpenDisputeCount] = useState(0);
 
   useEffect(() => {
     async function load() {
@@ -54,7 +43,7 @@ export default function AdminOverviewPage() {
 
       const activeListings = listings.filter((l) => l.status === "active").length;
       const pending = listings.filter((l) => l.status === "pending").length;
-      const openDisputes = orders.filter((o) => o.dispute && o.dispute.outcome == null).length;
+
       const totalSales = orders
         .filter((o) => o.status === "completed")
         .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
@@ -75,21 +64,17 @@ export default function AdminOverviewPage() {
         activeListings,
         totalOrders: orders.length,
         totalSalesAmount: totalSales,
-        openDisputes,
         pendingModeration: pending,
       });
 
       if (orderStatusData.length > 0) setOrderStatus(orderStatusData);
       if (catData.length > 0) setCategoryData(catData);
-      setPendingCount(pending);
-      setOpenDisputeCount(openDisputes);
       setLoading(false);
     }
     load();
   }, []);
 
-  const logs = MOCK_ACTIVITY_LOGS.slice(0, 6);
-  const maxSales = Math.max(...sales.map((s) => s.amount), 1);
+const maxSales = Math.max(...sales.map((s) => s.amount), 1);
   const maxOrders = Math.max(...orderStatus.map((o) => o.count), 1);
   const maxCat = Math.max(...categoryData.map((c) => c.count), 1);
 
@@ -97,11 +82,11 @@ export default function AdminOverviewPage() {
     <div className="space-y-6 animate-fade-in">
       {/* Stat cards */}
       {loading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-          {[...Array(6)].map((_, i) => <div key={i} className="h-28 bg-slate-200 rounded-2xl animate-pulse" />)}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          {[...Array(5)].map((_, i) => <div key={i} className="h-28 bg-slate-200 rounded-2xl animate-pulse" />)}
         </div>
       ) : stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <StatCard label="Total Users" value={stats.totalUsers} sub={`+${stats.newUsersThisWeek} this week`} color="violet"
             icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>} />
           <StatCard label="Active Listings" value={stats.activeListings} color="blue"
@@ -110,8 +95,6 @@ export default function AdminOverviewPage() {
             icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>} />
           <StatCard label="Total Sales" value={`₱${stats.totalSalesAmount.toLocaleString()}`} color="green"
             icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>} />
-          <StatCard label="Open Disputes" value={stats.openDisputes} color="red"
-            icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>} />
           <StatCard label="Pending Review" value={stats.pendingModeration} color="amber"
             icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
         </div>
@@ -167,53 +150,6 @@ export default function AdminOverviewPage() {
         </ChartCard>
       </div>
 
-      {/* Needs attention + Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white border border-slate-200 rounded-2xl p-5">
-          <h3 className="font-semibold text-slate-800 mb-4">Needs Attention</h3>
-          <div className="space-y-3">
-            {pendingCount > 0 && (
-              <Link href="/admin/listings" className="flex items-center justify-between p-3 bg-amber-50 border border-amber-100 rounded-xl hover:bg-amber-100 transition-colors">
-                <div className="flex items-center gap-2">
-                  <span className="text-amber-500">⏳</span>
-                  <span className="text-sm font-medium text-amber-800">{pendingCount} listings pending review</span>
-                </div>
-                <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-              </Link>
-            )}
-            {openDisputeCount > 0 && (
-              <Link href="/admin/disputes" className="flex items-center justify-between p-3 bg-red-50 border border-red-100 rounded-xl hover:bg-red-100 transition-colors">
-                <div className="flex items-center gap-2">
-                  <span className="text-red-500">⚠️</span>
-                  <span className="text-sm font-medium text-red-800">{openDisputeCount} open disputes</span>
-                </div>
-                <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-              </Link>
-            )}
-            {pendingCount === 0 && openDisputeCount === 0 && (
-              <p className="text-sm text-slate-400 text-center py-4">All clear! Nothing needs attention.</p>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-slate-800">Recent Activity</h3>
-            <Link href="/admin/activity" className="text-xs text-violet-600 hover:text-violet-500">View all →</Link>
-          </div>
-          <div className="space-y-2">
-            {logs.map((log) => (
-              <div key={log.id} className="flex items-start gap-3 py-2 border-b border-slate-50 last:border-0">
-                <span className="text-base mt-0.5">{actionIcons[log.actionType] ?? "📋"}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-slate-700 truncate">{log.description}</p>
-                  <p className="text-xs text-slate-400">{log.userName} · {new Date(log.createdAt).toLocaleString()}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

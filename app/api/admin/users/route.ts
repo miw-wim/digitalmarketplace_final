@@ -10,13 +10,15 @@ function getAdmin() {
 export async function GET() {
   try {
     const admin = getAdmin();
-    const { data, error } = await admin
-      .from("profiles")
-      .select("id, name, email, role, avatar, joined_at, status, is_active")
-      .eq("role", "user")
-      .order("joined_at", { ascending: false });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json(data ?? []);
+    const [profilesRes, productsRes] = await Promise.all([
+      admin.from("profiles").select("id, name, email, role, avatar, joined_at, status, is_active").eq("role", "user").order("joined_at", { ascending: false }),
+      admin.from("products").select("seller_id"),
+    ]);
+    if (profilesRes.error) return NextResponse.json({ error: profilesRes.error.message }, { status: 500 });
+    const countMap: Record<string, number> = {};
+    (productsRes.data ?? []).forEach((p) => { countMap[p.seller_id] = (countMap[p.seller_id] ?? 0) + 1; });
+    const data = (profilesRes.data ?? []).map((u) => ({ ...u, listings_count: countMap[u.id] ?? 0 }));
+    return NextResponse.json(data);
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }

@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import SignInModal from "@/components/SignInModal";
 import { useNotifications } from "@/lib/notifications-store";
+import { useCart } from "@/lib/cart-store";
 
 const userLinks = [
   { href: "/", label: "Home" },
@@ -30,6 +31,7 @@ function getInitials(name: string): string {
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { totalItems: cartCount } = useCart();
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -97,6 +99,18 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-3">
           {user ? (
             <>
+              {/* Cart icon */}
+              <Link href="/cart" className="relative w-9 h-9 flex items-center justify-center rounded-xl hover:bg-white/5 transition-colors text-gray-400 hover:text-white">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                {cartCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-violet-600 rounded-full text-white text-[10px] font-bold flex items-center justify-center">
+                    {cartCount > 9 ? "9+" : cartCount}
+                  </span>
+                )}
+              </Link>
+
               {/* Notification bell */}
               <div className="relative" ref={notifRef}>
                 <button

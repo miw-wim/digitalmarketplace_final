@@ -14,7 +14,6 @@ const pageTitles: Record<string, string> = {
   "/admin/payments": "Payments",
   "/admin/messages": "Messages",
   "/admin/reports": "Reports",
-  "/admin/activity": "Activity Logs",
   "/admin/settings": "Settings",
 };
 
@@ -25,15 +24,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (!loading && user && user.role !== "admin") {
-      router.replace("/dashboard?error=access_denied");
-    }
-    if (!loading && !user) {
-      router.replace("/");
-    }
-  }, [user, loading, router]);
+    if (loading) return;
+    if (!user) { router.replace("/"); return; }
+    if (user.role !== "admin") { router.replace("/dashboard"); return; }
+  }, [user, loading]);
 
-  if (loading || !user) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
@@ -41,7 +37,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  if (user.role !== "admin") return null;
+  if (!user || user.role !== "admin") return null;
 
   const title = pageTitles[pathname] ?? "Admin";
 

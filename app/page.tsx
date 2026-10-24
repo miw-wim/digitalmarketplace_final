@@ -5,17 +5,18 @@ import { useRouter } from "next/navigation";
 import SearchBar from "@/components/SearchBar";
 import ListingCard from "@/components/ListingCard";
 import { apiGetListings } from "@/lib/api";
-import type { Listing, Category } from "@/lib/types";
-import { CATEGORIES } from "@/lib/mock-data";
+import type { Listing } from "@/lib/types";
 import { useAuth } from "@/lib/auth-context";
+import { useSettings } from "@/lib/settings-store";
 
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth();
+  const { categories } = useSettings();
   const router = useRouter();
   const [listings, setListings] = useState<Listing[]>([]);
   const [filtered, setFiltered] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState<Category | "All">("All");
+  const [activeCategory, setActiveCategory] = useState<string>("All");
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -67,10 +68,10 @@ export default function HomePage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
         {/* Category chips */}
         <div className="flex gap-2 flex-wrap mb-8">
-          {(["All", ...CATEGORIES] as const).map((cat) => (
+          {(["All", ...categories.filter((c) => c !== "Other"), ...(categories.includes("Other") ? ["Other"] : [])]).map((cat) => (
             <button
               key={cat}
-              onClick={() => setActiveCategory(cat as Category | "All")}
+              onClick={() => setActiveCategory(cat)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
                 activeCategory === cat
                   ? "bg-violet-600 text-white shadow-lg shadow-violet-600/25"

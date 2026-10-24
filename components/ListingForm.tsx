@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
-import type { Listing, Category, ListingStatus } from "@/lib/types";
-import { CATEGORIES } from "@/lib/mock-data";
+import type { Listing, ListingStatus } from "@/lib/types";
+import { useSettings } from "@/lib/settings-store";
 
 interface ListingFormProps {
   initial?: Partial<Listing>;
@@ -12,15 +12,17 @@ interface ListingFormProps {
 interface Errors { title?: string; price?: string; description?: string; category?: string; stock?: string }
 
 export default function ListingForm({ initial, onSubmit, onCancel }: ListingFormProps) {
+  const { categories } = useSettings();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [price, setPrice] = useState(String(initial?.price ?? ""));
-  const [category, setCategory] = useState<Category>(initial?.category ?? "Other");
+  const [category, setCategory] = useState<string>(initial?.category ?? "Other");
   const [status, setStatus] = useState<ListingStatus>(initial?.status ?? "pending");
   const [images, setImages] = useState<string[]>(initial?.images ?? []);
   const [stock, setStock] = useState(String(initial?.stock ?? ""));
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const validate = (): Errors => {
@@ -32,17 +34,20 @@ export default function ListingForm({ initial, onSubmit, onCancel }: ListingForm
     return e;
   };
 
-  const handleFiles = (files: FileList | null) => {
+  const handleFiles = async (files: FileList | null) => {
     if (!files) return;
-    Array.from(files).forEach((file) => {
-      if (!file.type.startsWith("image/")) return;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setImages((prev) => [...prev, result]);
-      };
-      reader.readAsDataURL(file);
-    });
+    setUploading(true);
+    const { supabase } = await import("@/lib/supabase");
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith("image/")) continue;
+      const ext = file.name.split(".").pop();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from("products").upload(path, file, { upsert: true });
+      if (error) { console.error("Upload error:", error.message); continue; }
+      const { data: { publicUrl } } = supabase.storage.from("products").getPublicUrl(path);
+      setImages((prev) => [...prev, publicUrl]);
+    }
+    setUploading(false);
   };
 
   const removeImage = (index: number) => {
@@ -93,9 +98,9 @@ export default function ListingForm({ initial, onSubmit, onCancel }: ListingForm
       <div className="grid grid-cols-1 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1.5">Category</label>
-          <select value={category} onChange={(e) => setCategory(e.target.value as Category)}
+          <select value={category} onChange={(e) => setCategory(e.target.value)}
             className="w-full px-4 py-3 bg-white/5 border border-white/15 rounded-xl text-white focus:outline-none focus:border-violet-500 transition-all text-sm">
-            {CATEGORIES.map((c) => <option key={c} value={c} className="bg-[#0f0f1a]">{c}</option>)}
+            {categories.map((c) => <option key={c} value={c} className="bg-[#0f0f1a]">{c}</option>)}
           </select>
         </div>
       </div>
@@ -114,12 +119,13 @@ export default function ListingForm({ initial, onSubmit, onCancel }: ListingForm
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="w-full py-8 border-2 border-dashed border-white/20 hover:border-violet-500/60 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-violet-400 transition-all bg-white/3 hover:bg-violet-500/5"
+          disabled={uploading}
+          className="w-full py-8 border-2 border-dashed border-white/20 hover:border-violet-500/60 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-violet-400 transition-all bg-white/3 hover:bg-violet-500/5 disabled:opacity-60"
         >
           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          <span className="text-sm font-medium">Click to choose images</span>
+          <span className="text-sm font-medium">{uploading ? "Uploading…" : "Click to choose images"}</span>
           <span className="text-xs text-gray-600">PNG, JPG, WEBP — multiple allowed</span>
         </button>
 

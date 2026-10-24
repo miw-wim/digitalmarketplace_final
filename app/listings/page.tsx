@@ -11,10 +11,12 @@ import { supabase } from "@/lib/supabase";
 import type { Listing, Category, ListingStatus } from "@/lib/types";
 import { CATEGORIES } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth-context";
+import { useSettings } from "@/lib/settings-store";
 
 function ListingsContent() {
   const { showToast } = useToast();
   const { user } = useAuth();
+  const { categories } = useSettings();
   const isLoggedIn = !!user;
   const searchParams = useSearchParams();
   const [listings, setListings] = useState<Listing[]>([]);
@@ -77,7 +79,10 @@ function ListingsContent() {
   }, []);
 
   useEffect(() => {
-    let result = listings.filter((l) => l.status === "active" || (user && l.sellerId === user.id));
+    let result = listings.filter((l) => {
+      if (l.status === "pending") return user?.id === l.sellerId; // only seller sees their own pending
+      return l.status === "active";
+    });
     if (categoryFilter !== "All") result = result.filter((l) => l.category === categoryFilter);
     if (statusFilter !== "All") result = result.filter((l) => l.status === statusFilter);
     if (query) result = result.filter((l) => l.title.toLowerCase().includes(query.toLowerCase()) || l.description.toLowerCase().includes(query.toLowerCase()));
@@ -139,9 +144,9 @@ function ListingsContent() {
       <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-6 space-y-3">
         <SearchBar onSearch={setQuery} placeholder="Search listings..." />
         <div className="flex flex-wrap gap-3">
-          <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value as Category | "All")} className={inp}>
+          <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value as string | "All")} className={inp}>
             <option value="All" className="bg-[#0f0f1a]">All Categories</option>
-            {CATEGORIES.map((c) => <option key={c} value={c} className="bg-[#0f0f1a]">{c}</option>)}
+            {categories.map((c) => <option key={c} value={c} className="bg-[#0f0f1a]">{c}</option>)}
           </select>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as ListingStatus | "All")} className={inp}>
             <option value="All" className="bg-[#0f0f1a]">All Statuses</option>

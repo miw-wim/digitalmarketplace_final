@@ -41,15 +41,15 @@ function MessagesContent() {
   useEffect(() => {
     if (!user) return;
     apiGetConversations(user.id).then((data) => {
-      setConversations(data);
+      const unique = data.filter((c, i, arr) => arr.findIndex((x) => x.id === c.id) === i);
+      setConversations(unique);
       setLoadingConvs(false);
 
-      // If redirected from "Message Seller" with ?with=<userId>&name=<name>
       const withUserId = searchParams.get("with");
       const withName = searchParams.get("name");
       if (withUserId && withName && user) {
         apiGetOrCreateConversation(user.id, withUserId).then((convId) => {
-          const existing = data.find((c) => c.id === convId);
+          const existing = unique.find((c) => c.id === convId);
           if (existing) {
             setActiveConv(existing);
           } else {
@@ -63,7 +63,10 @@ function MessagesContent() {
               unreadCount: 0,
               isAdmin: false,
             };
-            setConversations((prev) => [newConv, ...prev]);
+            setConversations((prev) => {
+                const deduped = prev.filter((c) => c.id !== convId);
+                return [newConv, ...deduped];
+              });
             setActiveConv(newConv);
           }
         });

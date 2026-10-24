@@ -5,6 +5,8 @@ import { AuthProvider } from "@/lib/auth-context";
 import { ToastProvider } from "@/components/Toast";
 import { OrdersProvider } from "@/lib/orders-store";
 import { NotificationsProvider } from "@/lib/notifications-store";
+import { CartProvider } from "@/lib/cart-store";
+import { SettingsProvider } from "@/lib/settings-store";
 import UserShell from "@/components/UserShell";
 
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -22,7 +24,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ToastProvider>
             <OrdersProvider>
               <NotificationsProvider>
-                <UserShell>{children}</UserShell>
+              <CartProvider>
+                <SettingsProvider>
+                  <UserShell>{children}</UserShell>
+                </SettingsProvider>
+              </CartProvider>
               </NotificationsProvider>
             </OrdersProvider>
           </ToastProvider>
