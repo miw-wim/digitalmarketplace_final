@@ -51,12 +51,19 @@ export default function SignInModal({ onClose }: Props) {
       return;
     }
 
-    // Check role — admins skip OTP
+    // Check role and suspension status
     const { data: profile } = await supabase
       .from("profiles")
-      .select("name, role")
+      .select("name, role, status")
       .eq("id", authData.user.id)
       .single();
+
+    if (profile?.status === "suspended") {
+      await supabase.auth.signOut();
+      setLoading(false);
+      setApiError("Your account has been suspended. Please contact support.");
+      return;
+    }
 
     if (profile?.role === "admin") {
       setLoading(false);
@@ -104,9 +111,17 @@ export default function SignInModal({ onClose }: Props) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("name, role")
+      .select("name, role, status")
       .eq("id", data.user!.id)
       .single();
+
+    if (profile?.status === "suspended") {
+      await supabase.auth.signOut();
+      setLoading(false);
+      setApiError("Your account has been suspended. Please contact support.");
+      setStep("credentials");
+      return;
+    }
 
     setLoading(false);
     showToast(`Welcome back, ${profile?.name ?? "User"}!`, "success");
