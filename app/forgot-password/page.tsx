@@ -2,9 +2,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/Toast";
 
-type Step = "email" | "new-password" | "done";
+type Step = "email" | "otp" | "new-password" | "done";
 
 const inp = (hasError: boolean) =>
   `w-full px-4 py-3 bg-white/5 border ${hasError ? "border-red-500" : "border-white/15"} rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all`;
@@ -14,33 +15,58 @@ export default function ForgotPasswordPage() {
   const { showToast } = useToast();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
-  const [emailError, setEmailError] = useState("");
+  const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [pwErrors, setPwErrors] = useState<{ password?: string; confirm?: string }>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setEmailError("Valid email required"); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setErrors({ email: "Valid email required" });
+      return;
+    }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
     setLoading(false);
+    if (error) {
+      setErrors({ email: error.message });
+      return;
+    }
+    setStep("otp");
+  };
+
+  const handleOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otp.length !== 6) { setErrors({ otp: "Enter the 6-digit code" }); return; }
+    setLoading(true);
+    const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: "email" });
+    setLoading(false);
+    if (error) { setErrors({ otp: "Invalid or expired code. Try again." }); return; }
     setStep("new-password");
   };
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    const errs: typeof pwErrors = {};
+    const errs: Record<string, string> = {};
     if (password.length < 8) errs.password = "Min. 8 characters";
     if (password !== confirm) errs.confirm = "Passwords do not match";
-    if (Object.keys(errs).length) { setPwErrors(errs); return; }
+    if (Object.keys(errs).length) { setErrors(errs); return; }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 800));
+    const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
+    if (error) { setErrors({ password: error.message }); return; }
     setStep("done");
     showToast("Password reset successfully!", "success");
     setTimeout(() => router.push("/login"), 2000);
+  };
+
+  const resendOtp = async () => {
+    setLoading(true);
+    await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+    setLoading(false);
+    showToast("New code sent!", "success");
   };
 
   return (
@@ -52,18 +78,18 @@ export default function ForgotPasswordPage() {
             <>
               <div className="mb-8">
                 <h1 className="text-2xl font-bold text-white mb-1">Reset password</h1>
-                <p className="text-gray-400 text-sm">Enter your email to reset your password.</p>
+                <p className="text-gray-400 text-sm">We'll send a verification code to your email.</p>
               </div>
               <form onSubmit={handleEmail} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
-                  <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
-                    placeholder="you@email.com" className={inp(!!emailError)} />
-                  {emailError && <p className="text-xs text-red-400 mt-1">{emailError}</p>}
+                  <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setErrors({}); }}
+                    placeholder="you@email.com" className={inp(!!errors.email)} />
+                  {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email}</p>}
                 </div>
                 <button type="submit" disabled={loading}
                   className="w-full py-3 bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors">
-                  {loading ? "Checking…" : "Continue"}
+                  {loading ? "Sending code…" : "Send verification code"}
                 </button>
               </form>
               <p className="text-center text-sm text-gray-500 mt-6">
@@ -72,24 +98,58 @@ export default function ForgotPasswordPage() {
             </>
           )}
 
+          {step === "otp" && (
+            <>
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-white mb-1">Check your email</h2>
+                <p className="text-gray-400 text-sm">Enter the 6-digit code sent to <span className="text-white">{email}</span>.</p>
+              </div>
+              <form onSubmit={handleOtp} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Verification code</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) => { setOtp(e.target.value.replace(/\D/g, "")); setErrors({}); }}
+                    placeholder="123456"
+                    className={`${inp(!!errors.otp)} text-center text-2xl tracking-[0.5em] font-mono`}
+                  />
+                  {errors.otp && <p className="text-xs text-red-400 mt-1">{errors.otp}</p>}
+                </div>
+                <button type="submit" disabled={loading}
+                  className="w-full py-3 bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors">
+                  {loading ? "Verifying…" : "Verify code"}
+                </button>
+              </form>
+              <p className="text-center text-sm text-gray-500 mt-4">
+                Didn't receive it?{" "}
+                <button onClick={resendOtp} disabled={loading} className="text-violet-400 hover:text-violet-300 disabled:opacity-60">
+                  Resend code
+                </button>
+              </p>
+            </>
+          )}
+
           {step === "new-password" && (
             <>
               <div className="mb-8">
                 <h2 className="text-2xl font-bold text-white mb-1">New password</h2>
-                <p className="text-gray-400 text-sm">Choose a strong new password for <span className="text-white">{email}</span>.</p>
+                <p className="text-gray-400 text-sm">Choose a strong new password.</p>
               </div>
               <form onSubmit={handleReset} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">New password</label>
-                  <input type="password" value={password} onChange={(e) => { setPassword(e.target.value); setPwErrors((er) => ({ ...er, password: undefined })); }}
-                    placeholder="Min. 8 characters" className={inp(!!pwErrors.password)} />
-                  {pwErrors.password && <p className="text-xs text-red-400 mt-1">{pwErrors.password}</p>}
+                  <input type="password" value={password} onChange={(e) => { setPassword(e.target.value); setErrors((er) => ({ ...er, password: undefined! })); }}
+                    placeholder="Min. 8 characters" className={inp(!!errors.password)} />
+                  {errors.password && <p className="text-xs text-red-400 mt-1">{errors.password}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">Confirm password</label>
-                  <input type="password" value={confirm} onChange={(e) => { setConfirm(e.target.value); setPwErrors((er) => ({ ...er, confirm: undefined })); }}
-                    placeholder="Repeat password" className={inp(!!pwErrors.confirm)} />
-                  {pwErrors.confirm && <p className="text-xs text-red-400 mt-1">{pwErrors.confirm}</p>}
+                  <input type="password" value={confirm} onChange={(e) => { setConfirm(e.target.value); setErrors((er) => ({ ...er, confirm: undefined! })); }}
+                    placeholder="Repeat password" className={inp(!!errors.confirm)} />
+                  {errors.confirm && <p className="text-xs text-red-400 mt-1">{errors.confirm}</p>}
                 </div>
                 <button type="submit" disabled={loading}
                   className="w-full py-3 bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white font-semibold rounded-xl transition-colors">

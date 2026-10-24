@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useOrders } from "@/lib/orders-store";
+import { useNotifications } from "@/lib/notifications-store";
 import { supabase } from "@/lib/supabase";
 import type { DashboardStats } from "@/lib/types";
 
@@ -29,6 +30,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
   const { orders } = useOrders();
+  const { notifications, unreadCount, markAllAsRead } = useNotifications();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [ordersInTransit, setOrdersInTransit] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -109,28 +111,39 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent activity */}
+        {/* Notifications */}
         <div className="lg:col-span-2 bg-white/5 border border-white/10 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-white">Recent Activity</h2>
-            <Link href="/activity" className="text-xs text-violet-400 hover:text-violet-300">View all →</Link>
+            <h2 className="font-semibold text-white">Notifications</h2>
+            {unreadCount > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs bg-violet-600 text-white px-2 py-0.5 rounded-full font-semibold">{unreadCount} new</span>
+                <button onClick={markAllAsRead} className="text-xs text-gray-500 hover:text-violet-400 transition-colors">Mark all read</button>
+              </div>
+            )}
           </div>
           {loading ? (
             <div className="space-y-3">
               {[...Array(4)].map((_, i) => <div key={i} className="h-12 bg-white/5 rounded-xl animate-pulse" />)}
             </div>
-          ) : orders.filter((o) => o.buyerId === user?.id).length === 0 ? (
-            <p className="text-gray-500 text-sm text-center py-8">No activity yet.</p>
+          ) : notifications.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-3xl mb-2">🔔</p>
+              <p className="text-gray-500 text-sm">No notifications yet.</p>
+            </div>
           ) : (
             <div className="space-y-2">
-              {orders.filter((o) => o.buyerId === user?.id).slice(0, 5).map((order) => (
-                <div key={order.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors">
-                  <span className="text-lg mt-0.5">🛍️</span>
+              {notifications.slice(0, 5).map((n) => (
+                <div key={n.id} className={`flex items-start gap-3 p-3 rounded-xl transition-colors ${
+                  n.read ? "hover:bg-white/5" : "bg-violet-600/10 border border-violet-500/20"
+                }`}>
+                  <span className="text-lg mt-0.5">🔔</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-200 truncate">Ordered &quot;{order.listingTitle}&quot;</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{new Date(order.createdAt).toLocaleDateString()}</p>
+                    <p className={`text-sm font-semibold ${n.read ? "text-gray-300" : "text-white"}`}>{n.title}</p>
+                    <p className={`text-xs mt-0.5 ${n.read ? "text-gray-500" : "text-gray-400"}`}>{n.body}</p>
+                    <p className="text-xs text-gray-600 mt-1">{new Date(n.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</p>
                   </div>
-                  <span className="text-xs text-violet-400 font-semibold">₱{order.total}</span>
+                  {!n.read && <span className="w-2 h-2 rounded-full bg-violet-400 mt-1.5 flex-shrink-0" />}
                 </div>
               ))}
             </div>
