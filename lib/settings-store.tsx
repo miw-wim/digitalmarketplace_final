@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useRef } from "react";
 
 const DEFAULTS = { shippingFee: 80, categories: ["Electronics", "Books", "Clothing", "Furniture", "Sports", "Other"] };
 
@@ -23,9 +23,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [shippingFee, setShippingFeeState] = useState(DEFAULTS.shippingFee);
   const [categories, setCategoriesState] = useState(DEFAULTS.categories);
   const [loaded, setLoaded] = useState(false);
+  const saving = useRef(false);
 
   useEffect(() => {
-    const load = () =>
+    const load = () => {
+      if (saving.current) return; // don't overwrite while a save is in flight
       fetch("/api/admin/settings")
         .then((r) => r.json())
         .then((data) => {
@@ -34,6 +36,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           setLoaded(true);
         })
         .catch(() => setLoaded(true));
+    };
 
     load();
     const interval = setInterval(load, 3000);
@@ -41,13 +44,17 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setShippingFee = async (fee: number) => {
+    saving.current = true;
     setShippingFeeState(fee);
     await fetch("/api/admin/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ shippingFee: fee }) });
+    saving.current = false;
   };
 
   const setCategories = async (cats: string[]) => {
+    saving.current = true;
     setCategoriesState(cats);
     await fetch("/api/admin/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ categories: cats }) });
+    saving.current = false;
   };
 
   return <Ctx.Provider value={{ shippingFee, setShippingFee, categories, setCategories, loaded }}>{children}</Ctx.Provider>;
