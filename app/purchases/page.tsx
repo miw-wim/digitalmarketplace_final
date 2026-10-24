@@ -6,7 +6,7 @@ import { useOrders } from "@/lib/orders-store";
 import { useToast } from "@/components/Toast";
 import StatusBadge from "@/components/StatusBadge";
 import Modal from "@/components/Modal";
-import type { Order, Dispute, DisputeReason } from "@/lib/types";
+import type { Order } from "@/lib/types";
 
 function maskNumber(n: string) {
   return n.slice(0, 4) + "•••" + n.slice(-4);
@@ -28,55 +28,14 @@ function ConfirmReceivedModal({ order, onClose, onConfirm }: { order: Order; onC
   );
 }
 
-function DisputeModal({ order, onClose, onSubmit }: { order: Order; onClose: () => void; onSubmit: (d: Dispute) => void }) {
-  const [reason, setReason] = useState<DisputeReason>("item_not_received");
-  const [desc, setDesc] = useState("");
-  const [err, setErr] = useState("");
-
-  const reasons: { value: DisputeReason; label: string }[] = [
-    { value: "item_not_received", label: "Item not received" },
-    { value: "item_damaged", label: "Item damaged" },
-    { value: "item_not_as_described", label: "Item not as described" },
-  ];
-
-  const handle = () => {
-    if (!desc.trim()) { setErr("Please describe the issue."); return; }
-    onSubmit({ reason, description: desc, submittedAt: new Date().toISOString() });
-  };
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <label className="block text-xs text-gray-400 mb-1.5">Reason</label>
-        <select value={reason} onChange={(e) => setReason(e.target.value as DisputeReason)}
-          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500 transition-colors">
-          {reasons.map((r) => <option key={r.value} value={r.value} className="bg-[#0f0f1a]">{r.label}</option>)}
-        </select>
-      </div>
-      <div>
-        <label className="block text-xs text-gray-400 mb-1.5">Description</label>
-        <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} placeholder="Describe the issue in detail…"
-          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-violet-500 transition-colors resize-none" />
-        {err && <p className="text-xs text-red-400 mt-1">{err}</p>}
-      </div>
-      <div className="flex gap-3">
-        <button onClick={onClose} className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-sm font-medium transition-colors">Cancel</button>
-        <button onClick={handle} className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-semibold transition-colors">Submit dispute</button>
-      </div>
-    </div>
-  );
-}
-
 function OrderCard({ order }: { order: Order }) {
-  const { updateStatus, submitDispute } = useOrders();
+  const { updateStatus } = useOrders();
   const { showToast } = useToast();
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [disputeOpen, setDisputeOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const canCancel = order.status === "placed";
   const canConfirm = order.status === "delivered";
-  const canDispute = ["placed", "shipped", "delivered"].includes(order.status);
 
   const handleConfirm = async () => {
     setLoading(true);
@@ -92,14 +51,6 @@ function OrderCard({ order }: { order: Order }) {
     await updateStatus(order.id, "cancelled", order.paymentStatus);
     setLoading(false);
     showToast("Order cancelled.", "info");
-  };
-
-  const handleDispute = async (d: Dispute) => {
-    setLoading(true);
-    await submitDispute(order.id, d);
-    setLoading(false);
-    setDisputeOpen(false);
-    showToast("Dispute submitted. Admin will review.", "info");
   };
 
   return (
@@ -157,12 +108,6 @@ function OrderCard({ order }: { order: Order }) {
             Confirm received
           </button>
         )}
-        {canDispute && !order.dispute && (
-          <button onClick={() => setDisputeOpen(true)} disabled={loading}
-            className="px-3 py-1.5 bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 text-red-400 rounded-lg text-xs font-medium transition-colors disabled:opacity-60">
-            Open dispute
-          </button>
-        )}
         {canCancel && (
           <button onClick={handleCancel} disabled={loading}
             className="px-3 py-1.5 bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/30 text-gray-400 hover:text-red-400 rounded-lg text-xs font-medium transition-colors disabled:opacity-60">
@@ -173,9 +118,6 @@ function OrderCard({ order }: { order: Order }) {
 
       <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Confirm Received" size="sm">
         <ConfirmReceivedModal order={order} onClose={() => setConfirmOpen(false)} onConfirm={handleConfirm} />
-      </Modal>
-      <Modal open={disputeOpen} onClose={() => setDisputeOpen(false)} title="Open Dispute" size="md">
-        <DisputeModal order={order} onClose={() => setDisputeOpen(false)} onSubmit={handleDispute} />
       </Modal>
     </div>
   );
