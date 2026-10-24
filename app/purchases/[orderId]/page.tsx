@@ -6,57 +6,15 @@ import { useToast } from "@/components/Toast";
 import StatusBadge from "@/components/StatusBadge";
 import OrderTimeline from "@/components/OrderTimeline";
 import Modal from "@/components/Modal";
-import type { Dispute, DisputeReason } from "@/lib/types";
-
 function maskNumber(n: string) {
   return n.slice(0, 4) + "•••" + n.slice(-4);
 }
 
-function DisputeModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (d: Dispute) => void }) {
-  const [reason, setReason] = useState<DisputeReason>("item_not_received");
-  const [desc, setDesc] = useState("");
-  const [err, setErr] = useState("");
-
-  const reasons: { value: DisputeReason; label: string }[] = [
-    { value: "item_not_received", label: "Item not received" },
-    { value: "item_damaged", label: "Item damaged" },
-    { value: "item_not_as_described", label: "Item not as described" },
-  ];
-
-  const handle = () => {
-    if (!desc.trim()) { setErr("Please describe the issue."); return; }
-    onSubmit({ reason, description: desc, submittedAt: new Date().toISOString() });
-  };
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <label className="block text-xs text-gray-400 mb-1.5">Reason</label>
-        <select value={reason} onChange={(e) => setReason(e.target.value as DisputeReason)}
-          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-500 transition-colors">
-          {reasons.map((r) => <option key={r.value} value={r.value} className="bg-[#0f0f1a]">{r.label}</option>)}
-        </select>
-      </div>
-      <div>
-        <label className="block text-xs text-gray-400 mb-1.5">Description</label>
-        <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} placeholder="Describe the issue…"
-          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-violet-500 transition-colors resize-none" />
-        {err && <p className="text-xs text-red-400 mt-1">{err}</p>}
-      </div>
-      <div className="flex gap-3">
-        <button onClick={onClose} className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 rounded-xl text-sm font-medium transition-colors">Cancel</button>
-        <button onClick={handle} className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-sm font-semibold transition-colors">Submit</button>
-      </div>
-    </div>
-  );
-}
-
 export default function OrderDetailPage({ params }: { params: Promise<{ orderId: string }> }) {
   const { orderId } = use(params);
-  const { orders, updateStatus, submitDispute } = useOrders();
+  const { orders, updateStatus } = useOrders();
   const { showToast } = useToast();
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [disputeOpen, setDisputeOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const order = orders.find((o) => o.id === orderId);
@@ -73,7 +31,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
 
   const { shippingAddress: a } = order;
   const canConfirm = order.status === "delivered";
-  const canDispute = ["placed", "shipped", "delivered"].includes(order.status) && !order.dispute;
   const canCancel = order.status === "placed";
 
   const handleConfirm = async () => {
@@ -90,14 +47,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
     await updateStatus(order.id, "cancelled", order.paymentStatus);
     setLoading(false);
     showToast("Order cancelled.", "info");
-  };
-
-  const handleDispute = async (d: Dispute) => {
-    setLoading(true);
-    await submitDispute(order.id, d);
-    setLoading(false);
-    setDisputeOpen(false);
-    showToast("Dispute submitted.", "info");
   };
 
   return (
@@ -187,12 +136,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
             Confirm received
           </button>
         )}
-        {canDispute && (
-          <button onClick={() => setDisputeOpen(true)} disabled={loading}
-            className="px-4 py-2.5 bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 text-red-400 rounded-xl text-sm font-medium transition-colors disabled:opacity-60">
-            Open dispute
-          </button>
-        )}
         {canCancel && (
           <button onClick={handleCancel} disabled={loading}
             className="px-4 py-2.5 bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/30 text-gray-400 hover:text-red-400 rounded-xl text-sm font-medium transition-colors disabled:opacity-60">
@@ -217,9 +160,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
         </div>
       </Modal>
 
-      <Modal open={disputeOpen} onClose={() => setDisputeOpen(false)} title="Open Dispute" size="md">
-        <DisputeModal onClose={() => setDisputeOpen(false)} onSubmit={handleDispute} />
-      </Modal>
     </div>
   );
 }
