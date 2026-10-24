@@ -9,7 +9,7 @@ export default function Footer() {
             <span className="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center text-white text-xs font-black">S</span>
             <span className="text-white">Shop<span className="text-violet-400">ora</span></span>
           </div>
-          <p className="text-sm text-gray-500">The marketplace built for students, by students.</p>
+          <p className="text-sm text-gray-500">Shopora is an online marketplace where anyone can buy and sell items, pay with GCash or cash on delivery, and track every order.</p>
         </div>
         <div>
           <h4 className="text-sm font-semibold text-white mb-3">Marketplace</h4>
