@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef } from "react";
-import type { Listing, ListingStatus } from "@/lib/types";
+import type { Listing, Category, ListingStatus } from "@/lib/types";
 import { useSettings } from "@/lib/settings-store";
 
 interface ListingFormProps {
@@ -59,7 +59,7 @@ export default function ListingForm({ initial, onSubmit, onCancel }: ListingForm
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setLoading(true);
-    await onSubmit({ title, description, price: Number(price), category, status, images, stock: Number(stock) });
+    await onSubmit({ title, description, price: Number(price), category: category as Category, status, images, stock: Number(stock) });
     setLoading(false);
   };
 

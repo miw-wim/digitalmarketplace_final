@@ -8,7 +8,7 @@ import SearchBar from "@/components/SearchBar";
 import { useToast } from "@/components/Toast";
 import { apiGetListings, apiCreateListing, apiUpdateListing, apiDeleteListing } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
-import type { Listing, Category, ListingStatus } from "@/lib/types";
+import type { Listing, ListingStatus } from "@/lib/types";
 import { CATEGORIES } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth-context";
 import { useSettings } from "@/lib/settings-store";
@@ -23,7 +23,7 @@ function ListingsContent() {
   const [filtered, setFiltered] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<Category | "All">("All");
+  const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<ListingStatus | "All">("All");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");

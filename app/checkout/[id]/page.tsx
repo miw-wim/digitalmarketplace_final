@@ -74,7 +74,6 @@ export default function CheckoutPage({ params }: { params: Promise<{ id: string 
       listingPrice: listing.price,
       shippingFee: shippingFee,
       total,
-      quantity: qty,
       sellerId: listing.sellerId,
       sellerName: listing.sellerName,
       sellerCity: "Metro Manila",
